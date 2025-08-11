@@ -1,0 +1,48 @@
+---
+- name: Install kav
+  hosts: localhost
+  any_errors_fatal: true
+  strategy: linear
+  connection: ssh
+  gather_facts: false
+  become: true
+  become_method: sudo
+
+  vars:
+    kav_url: "https://products.s.kaspersky-labs.com/endpoints/keslinux10/11.3.0.7441/multilanguage-11.3.0.7441/3635353133317c44454c7c31/kesl-11.3.0-7441.x86_64.rpm"
+    autoinstall_ini: |
+      EULA_AGREED=yes
+      PRIVACY_POLICY_AGREED=yes
+      USE_KSN=no
+      LOCALE=ru_RU.UTF-8
+      UPDATE_EXECUTE=no
+      KERNEL_SRCS_INSTALL=no
+      CONFIGURE_SELINUX=yes
+    autoinstall_path: "/tmp/autoinstall.ini"
+
+  tasks:
+    - name: Get rpm kav
+      ansible.builtin.get_url:
+        url: "{{ kav_url }}"
+        dest: /tmp/kesl-11.3.0-7441.x86_64.rpm
+
+    - name: Install pkgs kav
+      ansible.builtin.package:
+        name:
+          - perl-Getopt-Long
+          - perl-File-Copy
+        state: latest
+        update_cache: true
+
+    - name: Install kesl rpm
+      ansible.builtin.command:
+        cmd: "dnf install /tmp/kesl-11.3.0-7441.x86_64.rpm -y"
+
+    - name: Create autoinstall.ini
+      ansible.builtin.copy:
+        content: "{{ autoinstall_ini }}"
+        dest: "{{ autoinstall_path }}"
+
+    - name: Apply kav setup
+      ansible.builtin.command:
+        cmd: "/opt/kaspersky/kesl/bin/kesl-setup.pl --autoinstall='{{ autoinstall_path }}'"
